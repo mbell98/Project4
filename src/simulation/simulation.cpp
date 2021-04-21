@@ -124,14 +124,14 @@ void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
     */
    event->thread->set_state(RUNNING,event->time);
    prev_thread = active_thread;
-   if (scheduler->time_slice < event->thread->get_next_burst(CPU)->length){
+   if (scheduler->time_slice < event->thread->get_next_burst(IO)->length){
          //Process preempted
          events.push(std::make_shared<Event>(EventType::PROCESS_PREEMPTED, event->time + process_switch_overhead , event_num, nullptr, nullptr));
          event_num ++;
    }else{
        //check for last cpu burst
        std::shared_ptr<Burst> burst_out = event->thread->pop_next_burst(IO);
-       if(event->thread->get_next_burst(CPU) == nullptr){
+       if(event->thread->get_next_burst(IO) == nullptr){
            //CPU burst complete
          events.push(std::make_shared<Event>(EventType::CPU_BURST_COMPLETED, event->time + burst_out->length , event_num, nullptr, nullptr));
          event_num ++;
