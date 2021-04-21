@@ -23,6 +23,7 @@ std::shared_ptr<SchedulingDecision> FCFSScheduler::get_next_thread() {
     next_decision->thread = next_thread;
     next_decision->time_slice = next_thread->state_change_time-next_thread->start_time;
     next_decision->explanation = "selected from"+std::to_string(ready_queue.size())+" processes";
+    return next_decision;
 }
 
 void FCFSScheduler::add_to_ready_queue(std::shared_ptr<Thread> thread) {
