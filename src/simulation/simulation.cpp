@@ -92,45 +92,118 @@ void Simulation::run()
 //==============================================================================
 
 void Simulation::handle_process_arrived(const std::shared_ptr<Event> event)
-{
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle process arrived event properly\n\n";
+{   
+    /*
+     * Set Ready enqueue
+     * process IDLE when active_thread is null or 
+     * scheduler empty (check w/ DISPATCHER INVOKED)
+     * if not idle, preempt
+     */  
+    if(event->thread != nullptr){
+        event->thread->set_state(READY,event->time);
+        scheduler ->add_to_ready_queue(active_thread);
+    }
+    
+    if ( (active_thread == nullptr) || (scheduler->empty()) ) {
+        //make new DISPATCHER_INVOKED event add to queue
+        events.push(std::make_shared<Event>(EventType::DISPATCHER_INVOKED, event->time + process_switch_overhead , event_num, nullptr, nullptr));
+        event_num ++;
+    }
+    else{
+         events.push(std::make_shared<Event>(EventType::PROCESS_PREEMPTED, event->time + process_switch_overhead , event_num, nullptr, nullptr));
+         event_num ++;
+    }
 }
 
 void Simulation::handle_dispatch_completed(const std::shared_ptr<Event> event)
 {
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle dispatch completed event properly\n\n";
+    /*
+    * set running
+    * last thread = current thread
+    * compare time slice and burst length
+    */
+   event->thread->set_state(RUNNING,event->time);
+   prev_thread = active_thread;
+   if (scheduler->time_slice < event->thread->get_next_burst(CPU)->length){
+         //Process preempted
+         events.push(std::make_shared<Event>(EventType::PROCESS_PREEMPTED, event->time + process_switch_overhead , event_num, nullptr, nullptr));
+         event_num ++;
+   }else{
+       //check for last cpu burst
+       std::shared_ptr<Burst> burst_out = event->thread->pop_next_burst(IO);
+       if(event->thread->get_next_burst(CPU) == nullptr){
+           //CPU burst complete
+         events.push(std::make_shared<Event>(EventType::CPU_BURST_COMPLETED, event->time + burst_out->length , event_num, nullptr, nullptr));
+         event_num ++;
+       }
+       else{
+           //process complete
+           events.push(std::make_shared<Event>(EventType::PROCESS_COMPLETED, event->time + burst_out->length , event_num, nullptr, nullptr));
+           event_num ++;
+       }
+       event->thread->bursts.push(burst_out);
+   }
 }
 
 void Simulation::handle_cpu_burst_completed(const std::shared_ptr<Event> event)
 {
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle cpu burst completed event properly\n\n";
+    /*
+    * Pop burst, set to blocked
+    * to I/O burst complete and dispatcher invoked
+    */
+   event ->  thread->set_state(BLOCKED,event->time);
+   event -> thread -> pop_next_burst(CPU);
+   events.push(std::make_shared<Event>(EventType::IO_BURST_COMPLETED, event->time + event->thread->bursts.front()->length , event_num, nullptr, nullptr));
+   event_num ++;
+    events.push(std::make_shared<Event>(EventType::DISPATCHER_INVOKED, event->time + event->thread->bursts.front()->length , event_num, nullptr, nullptr));
+   event_num ++;
 }
 
 void Simulation::handle_io_burst_completed(const std::shared_ptr<Event> event)
 {
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle io burst completed event properly\n\n";
+  /*
+  * Set Ready Enqueue
+  * Pop burst
+  * Process Idle
+  */  
+ event->thread->set_state(READY,event->time);
+ scheduler->add_to_ready_queue(event->thread);
+ event->thread->pop_next_burst(IO);
 }
 
 void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
 {
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle process completed event properly\n\n";
+    /*
+    * Exit
+    */
+   event->thread->set_state(EXIT,event->time);
 }
 
 void Simulation::handle_process_preempted(const std::shared_ptr<Event> event)
 {
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle process preempted event properly\n\n";
+    /*
+    * Set ready enqueue
+    * decrease CPU burst
+    * make DISPATCHER_INVOKED event
+    */
+   event ->thread->set_state(READY, event->time);
+   scheduler->add_to_ready_queue(event->thread);
+   events.push(std::make_shared<Event>(EventType::PROCESS_COMPLETED, event->time + event->thread->bursts.front()->length-1 , event_num, nullptr, nullptr));
+   event_num ++;
 }
 
 void Simulation::handle_dispatcher_invoked(const std::shared_ptr<Event> event)
 {
-    // TODO: Handle this event properly
-    std::cout << "TODO: Handle dispatcher invoked event properly\n\n";
+   /*
+   * Get Scheduling Decision + Set current thread
+   * Decide schedule algo
+   * 
+   * Comes from I/O burst complete and arrival
+   */
+    std::shared_ptr<Thread> next_thread = scheduler->get_next_thread()->thread; 
+    int next_burst_length = next_thread->pop_next_burst(CPU)->length;
+    events.push(std::make_shared<Event>(EventType::PROCESS_DISPATCH_COMPLETED, event->time + next_burst_length , event_num, next_thread, nullptr));
+    event_num ++;
 }
 
 //==============================================================================
