@@ -13,8 +13,12 @@ RRScheduler::RRScheduler(int slice) {
 }
 
 std::shared_ptr<SchedulingDecision> RRScheduler::get_next_thread() {
-    
-    queue_holder.at(0).front();
+    std::shared_ptr<Thread> next_thread = queue_holder.at(0).front();
+    std::shared_ptr<SchedulingDecision> next_decision;
+    next_decision->thread = next_thread;
+    next_decision->time_slice = next_thread->state_change_time-next_thread->start_time;
+    next_decision->explanation = "selected from"+std::to_string(this->size())+" processes";
+    return next_decision;
 }
 
 void RRScheduler::add_to_ready_queue(std::shared_ptr<Thread> thread) {
