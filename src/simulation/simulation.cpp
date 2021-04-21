@@ -152,7 +152,7 @@ void Simulation::handle_cpu_burst_completed(const std::shared_ptr<Event> event)
     * to I/O burst complete and dispatcher invoked
     */
    event ->  thread->set_state(BLOCKED,event->time);
-   event -> thread -> pop_next_burst(CPU);
+   event -> thread -> pop_next_burst(IO);
    events.push(std::make_shared<Event>(EventType::IO_BURST_COMPLETED, event->time + event->thread->bursts.front()->length , event_num, nullptr, nullptr));
    event_num ++;
     events.push(std::make_shared<Event>(EventType::DISPATCHER_INVOKED, event->time + event->thread->bursts.front()->length , event_num, nullptr, nullptr));
@@ -168,7 +168,8 @@ void Simulation::handle_io_burst_completed(const std::shared_ptr<Event> event)
   */  
  event->thread->set_state(READY,event->time);
  scheduler->add_to_ready_queue(event->thread);
- event->thread->pop_next_burst(IO);
+ event->thread->pop_next_burst(CPU);
+ active_thread= nullptr;
 }
 
 void Simulation::handle_process_completed(const std::shared_ptr<Event> event)
